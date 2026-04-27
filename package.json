@@ -8,7 +8,7 @@
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
     "seed": "ts-node prisma/seed.ts",
-    "init-rls": "ts-node prisma/init-rls.ts",
+    "init-rls": "node prisma/init-rls.js",
     "test": "jest --runInBand"
   },
   "prisma": {

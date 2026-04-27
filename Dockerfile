@@ -34,7 +34,8 @@ FROM node:22-alpine AS runtime
 
 WORKDIR /app
 
-# openssl y curl para healthcheck. ts-node para correr seed/init-rls.
+# openssl para Prisma + curl para healthcheck + tini para señales.
+# Nota: ya no necesitamos ts-node aquí — init-rls.js corre con node nativo.
 RUN apk add --no-cache openssl curl tini
 
 # Copiar solo lo necesario desde el builder.
@@ -65,4 +66,4 @@ ENTRYPOINT ["/sbin/tini", "--"]
 # El comando real puede sobrescribirse en Coolify (Custom Start Command) si
 # preferís separar migración del start (mejor práctica en deploys con
 # múltiples instancias para evitar race conditions).
-CMD ["sh", "-c", "npx prisma db push --accept-data-loss && npx ts-node prisma/init-rls.ts && npm run start:cluster"]
+CMD ["sh", "-c", "npx prisma db push --accept-data-loss && npm run init-rls && npm run start:cluster"]

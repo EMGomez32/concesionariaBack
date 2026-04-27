@@ -1,31 +1,25 @@
 /**
- * init-rls.ts
+ * init-rls.js
  *
- * Idempotent migration that:
- *   1. Backfills `concesionaria_id` on sub-resource tables that were
- *      denormalized as part of enabling Postgres Row Level Security.
- *   2. Enables RLS + FORCE RLS on every tenant-scoped table.
- *   3. (Re)creates the `tenant_iso` policy that allows access only when:
- *        - the row's concesionaria_id matches `current_setting('app.tenant_id')`
- *        - OR the request flagged `current_setting('app.is_super_admin') = 'true'`
+ * Idempotent migration que:
+ *   1. Backfillea `concesionaria_id` en tablas hijas que se denormalizaron
+ *      al habilitar Postgres Row Level Security.
+ *   2. Habilita RLS + FORCE RLS en cada tabla tenant-scoped.
+ *   3. (Re)crea la policy `tenant_iso` que permite acceso solo cuando:
+ *        - row's concesionaria_id matchea `current_setting('app.tenant_id')`
+ *        - O bien la request marcó `current_setting('app.is_super_admin') = 'true'`
  *
- * Runs every time the backend starts. All statements use IF EXISTS / IF NOT
- * EXISTS guards or DROP POLICY IF EXISTS so re-runs are no-ops.
+ * Corre cada vez que arranca el backend. Todos los statements usan IF EXISTS
+ * / DROP POLICY IF EXISTS para que el re-run sea idempotente.
  *
- * Important: this script connects with the same role as the app (postgres
- * superuser by default). FORCE ROW LEVEL SECURITY ensures even superusers
- * are subject to policies, so the app must always set the session vars
- * before running queries — that's done by the Prisma client extension.
- *
- * To bypass during seed/migration runs, set `app.is_super_admin = 'true'`
- * at the start of the script (the seed does this).
+ * Pure JavaScript — no necesita ts-node ni @types/pg en runtime.
  */
-import 'dotenv/config';
-import { Pool } from 'pg';
+require('dotenv/config');
+const { Pool } = require('pg');
 
 const connectionString = (process.env.DATABASE_URL || '').replace('prisma+postgres://', 'postgres://');
 
-// Tables that store tenant-scoped data and must enforce isolation.
+// Tablas tenant-scoped que deben enforcear isolation.
 const TENANT_TABLES = [
     'sucursales',
     'usuarios',
@@ -60,26 +54,16 @@ const TENANT_TABLES = [
     'concesionaria_subscriptions',
     'invoices',
     'payments',
+    'cajas',
+    'movimientos_caja',
+    'cierres_caja',
+    'marcas',
+    'modelos',
+    'versiones_vehiculo',
 ];
 
-// Sub-resources that need concesionaria_id backfilled from a parent table.
-// Each entry also feeds the BEFORE INSERT trigger created below so app code
-// doesn't need to set concesionaria_id explicitly on inserts — the parent FK
-// is enough.
-type BackfillEntry = {
-    /** child table */
-    table: string;
-    /** column in `table` that points at the parent */
-    fk: string;
-    /** parent table that holds concesionaria_id */
-    parentTable: string;
-    /** column in parentTable to join on */
-    parentKey: string;
-    /** custom backfill SQL (covers chained FKs like pagos_cuota → cuotas → financiaciones) */
-    backfillSql: string;
-};
-
-const BACKFILL_PLAN: BackfillEntry[] = [
+// Sub-resources que necesitan concesionaria_id backfilleado desde el padre.
+const BACKFILL_PLAN = [
     { table: 'vehiculo_archivos', fk: 'vehiculo_id', parentTable: 'vehiculos', parentKey: 'id',
       backfillSql: `UPDATE vehiculo_archivos c SET concesionaria_id = p.concesionaria_id FROM vehiculos p WHERE c.vehiculo_id = p.id AND c.concesionaria_id IS NULL;` },
     { table: 'presupuesto_items', fk: 'presupuesto_id', parentTable: 'presupuestos', parentKey: 'id',
@@ -96,7 +80,6 @@ const BACKFILL_PLAN: BackfillEntry[] = [
       backfillSql: `UPDATE venta_canje_vehiculo c SET concesionaria_id = p.concesionaria_id FROM ventas p WHERE c.venta_id = p.id AND c.concesionaria_id IS NULL;` },
     { table: 'cuotas', fk: 'financiacion_id', parentTable: 'financiaciones', parentKey: 'id',
       backfillSql: `UPDATE cuotas c SET concesionaria_id = p.concesionaria_id FROM financiaciones p WHERE c.financiacion_id = p.id AND c.concesionaria_id IS NULL;` },
-    // pagos_cuota: parent is cuotas (which now also has concesionaria_id after backfill).
     { table: 'pagos_cuota', fk: 'cuota_id', parentTable: 'cuotas', parentKey: 'id',
       backfillSql: `UPDATE pagos_cuota c SET concesionaria_id = q.concesionaria_id FROM cuotas q WHERE c.cuota_id = q.id AND c.concesionaria_id IS NULL;` },
     { table: 'solicitud_financiacion_archivos', fk: 'solicitud_id', parentTable: 'solicitudes_financiacion', parentKey: 'id',
@@ -109,7 +92,7 @@ const BACKFILL_PLAN: BackfillEntry[] = [
       backfillSql: `UPDATE payments c SET concesionaria_id = i.concesionaria_id FROM invoices i WHERE c.invoice_id = i.id AND c.concesionaria_id IS NULL;` },
 ];
 
-async function tableExists(client: any, table: string): Promise<boolean> {
+async function tableExists(client, table) {
     const res = await client.query(
         `SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = $1`,
         [table]
@@ -117,7 +100,7 @@ async function tableExists(client: any, table: string): Promise<boolean> {
     return res.rowCount > 0;
 }
 
-async function columnExists(client: any, table: string, column: string): Promise<boolean> {
+async function columnExists(client, table, column) {
     const res = await client.query(
         `SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2`,
         [table, column]
@@ -131,14 +114,14 @@ async function main() {
     try {
         console.log('[init-rls] starting…');
 
-        // Backfill phase: only for tables that already exist in the DB.
+        // Backfill phase: solo para tablas que ya existen.
         for (const { table, backfillSql } of BACKFILL_PLAN) {
             if (!(await tableExists(client, table))) {
-                console.log(`[init-rls] skip backfill for ${table} (table does not exist yet)`);
+                console.log(`[init-rls] skip backfill for ${table} (tabla aún no existe)`);
                 continue;
             }
             if (!(await columnExists(client, table, 'concesionaria_id'))) {
-                console.log(`[init-rls] skip backfill for ${table} (column not yet present — db push hasn't run)`);
+                console.log(`[init-rls] skip backfill for ${table} (column no presente todavía)`);
                 continue;
             }
             const r = await client.query(backfillSql);
@@ -147,9 +130,8 @@ async function main() {
             }
         }
 
-        // BEFORE INSERT triggers that derive concesionaria_id from the parent
-        // when the app didn't set it (case: super_admin creating sub-resources).
-        // These run BEFORE the RLS policy check, so the row passes WITH CHECK.
+        // BEFORE INSERT triggers que derivan concesionaria_id del padre
+        // cuando la app no lo seteó (caso: super_admin creando sub-resources).
         for (const { table, fk, parentTable, parentKey } of BACKFILL_PLAN) {
             if (!(await tableExists(client, table))) continue;
             if (!(await tableExists(client, parentTable))) continue;

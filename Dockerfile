@@ -13,10 +13,13 @@ WORKDIR /app
 # Build tools necesarios para compilar bcrypt nativo en Alpine.
 RUN apk add --no-cache openssl python3 make g++
 
-# Instalar dependencias (incluye dev — necesarias para `tsc` y prisma generate).
+# Instalar dependencias INCLUYENDO dev — necesarias para tsc, prisma generate
+# y los @types/* del bundle. `--include=dev` fuerza la instalación aunque
+# NODE_ENV=production ya esté seteado en el entorno del build (caso de Coolify,
+# Railway, GitHub Actions, etc.) que hace que npm omita devDependencies.
 COPY package*.json ./
 COPY prisma ./prisma/
-RUN npm ci
+RUN npm ci --include=dev
 
 # Copiar el resto del código y compilar.
 COPY . .

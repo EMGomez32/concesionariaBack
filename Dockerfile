@@ -62,8 +62,11 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
 # `tini` reapa zombies y maneja señales para PM2/Node.
 ENTRYPOINT ["/sbin/tini", "--"]
 
-# Default: corre migrations + RLS + arranca cluster con PM2.
+# Default: prisma db push (sync schema) + init-rls (RLS policies) +
+# bootstrap (roles, plan Free, super_admin si BOOTSTRAP_SUPER_PASSWORD está
+# seteado) + arranca cluster con PM2.
+# Todos los pasos son idempotentes y seguros de re-correr.
 # El comando real puede sobrescribirse en Coolify (Custom Start Command) si
 # preferís separar migración del start (mejor práctica en deploys con
 # múltiples instancias para evitar race conditions).
-CMD ["sh", "-c", "npx prisma db push --accept-data-loss && npm run init-rls && npm run start:cluster"]
+CMD ["sh", "-c", "npx prisma db push --accept-data-loss && npm run init-rls && npm run bootstrap && npm run start:cluster"]

@@ -106,35 +106,67 @@ En **Domains**:
 
 ---
 
-## 8. Primer arranque y seed
+## 8. Primer arranque — bootstrap automático
 
-El arranque ejecuta `prisma db push` que crea el schema. Después podés:
+Al arrancar, el container ejecuta secuencialmente:
+1. `prisma db push` — sincroniza el schema con la DB.
+2. `npm run init-rls` — habilita RLS y crea las policies de aislamiento.
+3. `npm run bootstrap` — **crea roles + Plan Free + super_admin (si está configurado)**.
+4. `npm run start:cluster` — arranca PM2 con un worker por core.
+
+El paso 3 es **idempotente** y siempre se corre, sin riesgo de pisar datos.
+
+### Para que el bootstrap te cree el super_admin automáticamente
+
+Setear estas 3 env vars en el panel de la app en Coolify:
+
+| Variable | Valor recomendado | Descripción |
+|---|---|---|
+| `BOOTSTRAP_SUPER_EMAIL` | `tu@email.com` | Email del super admin del SaaS. Default: `soporteautenza@gmail.com` |
+| `BOOTSTRAP_SUPER_PASSWORD` | (tu password fuerte) | **Marcar como Secret en Coolify**. Si está vacío, no se crea el usuario. |
+| `BOOTSTRAP_SUPER_NAME` | `Soporte AUTENZA` | Nombre que aparece en el panel. Default: `Soporte AUTENZA` |
+
+**Después del primer redeploy**, el log del container va a mostrar algo así:
+
+```
+[bootstrap] starting…
+[bootstrap] roles: 6/6
+[bootstrap] planes: 1
+[bootstrap] super_admin creado: tu@email.com (id=1)
+[bootstrap] done.
+```
+
+Y ya podés loguear en el front con esas credenciales.
+
+### Re-runs
+
+El bootstrap es idempotente. En cada arranque:
+- Si los roles ya existen → no los duplica.
+- Si el super_admin ya existe → **actualiza la password** con la del env var (útil para rotar).
+- Si querés cambiar de email, agregar manualmente desde el panel de usuarios después.
+
+### Si NO querés bootstrap automático
+
+No setees `BOOTSTRAP_SUPER_PASSWORD`. El script crea roles + Plan Free pero NO toca usuarios. Después podés:
 
 **Opción A — usar el seed de demo** (no recomendado en prod):
 1. En Coolify → Terminal de la app → `npm run seed`.
-2. Esto crea `admin@demo.com` y `superadmin@demo.com` con passwords de las env vars `SEED_ADMIN_PASSWORD` / `SEED_SUPER_PASSWORD`.
+2. Crea `admin@demo.com` y `superadmin@demo.com` con passwords de las env vars `SEED_ADMIN_PASSWORD` / `SEED_SUPER_PASSWORD`.
 
-**Opción B — crear el primer super_admin manualmente** (recomendado):
+**Opción B — crear el primer super_admin manualmente con SQL** desde DBeaver o Adminer:
 
-```sh
-# En el terminal de Coolify, dentro de la app:
-node -e "
-const bcrypt = require('bcrypt');
-const { Pool } = require('pg');
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-(async () => {
-    const hash = await bcrypt.hash('TU_PASSWORD_FUERTE', 10);
-    await pool.query(\"INSERT INTO roles (nombre) VALUES ('super_admin') ON CONFLICT DO NOTHING\");
-    const r = await pool.query(\"SELECT id FROM roles WHERE nombre='super_admin'\");
-    const u = await pool.query(\"INSERT INTO usuarios (nombre, email, password_hash, email_verificado, estado, activo, created_at, updated_at) VALUES ('Super Admin', 'TU_EMAIL@dominio.com', \$1, true, 'activo', true, NOW(), NOW()) RETURNING id\", [hash]);
-    await pool.query('INSERT INTO usuario_roles (usuario_id, rol_id, created_at, updated_at) VALUES (\$1, \$2, NOW(), NOW())', [u.rows[0].id, r.rows[0].id]);
-    console.log('Super admin creado:', u.rows[0].id);
-    await pool.end();
-})();
-"
+```sql
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+SELECT set_config('app.is_super_admin', 'true', false);
+INSERT INTO roles (nombre, created_at, updated_at) VALUES ('super_admin', NOW(), NOW()) ON CONFLICT (nombre) DO NOTHING;
+WITH u AS (
+    INSERT INTO usuarios (nombre, email, password_hash, email_verificado, estado, activo, created_at, updated_at)
+    VALUES ('TU_NOMBRE', 'tu@email.com', crypt('TU_PASSWORD', gen_salt('bf', 10)), true, 'activo', true, NOW(), NOW())
+    RETURNING id
+)
+INSERT INTO usuario_roles (usuario_id, rol_id, created_at, updated_at)
+SELECT u.id, r.id, NOW(), NOW() FROM u, roles r WHERE r.nombre = 'super_admin';
 ```
-
-Reemplazar `TU_PASSWORD_FUERTE` y `TU_EMAIL@dominio.com`.
 
 ---
 

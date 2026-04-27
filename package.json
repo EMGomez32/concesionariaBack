@@ -9,6 +9,7 @@
     "build": "tsc",
     "seed": "ts-node prisma/seed.ts",
     "init-rls": "node prisma/init-rls.js",
+    "bootstrap": "node prisma/bootstrap.js",
     "test": "jest --runInBand"
   },
   "prisma": {

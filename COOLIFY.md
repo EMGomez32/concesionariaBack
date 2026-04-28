@@ -48,15 +48,38 @@ En la pestaña **Environment Variables** de la app, configurar:
 | `LOG_LEVEL` | `info` | Nivel de winston. `debug` para troubleshooting. |
 | `UPLOADS_DIR` | `/app/uploads` | Path interno de los archivos subidos. |
 
-**Para emails (cuando tengas SMTP configurado)**:
+**Para emails — SMTP** (sin esto los emails de activación/reset solo van al log):
 
-| Variable | Ejemplo |
+Si `SMTP_HOST` no está seteado, el sistema usa `ConsoleTransport` (logs los emails). Cuando lo seteás, automáticamente arranca el `SmtpTransport` con nodemailer.
+
+Proveedores recomendados con tier gratuito:
+
+**Brevo** (300 emails/día gratis, sin tarjeta):
+| Variable | Valor |
+|---|---|
+| `SMTP_HOST` | `smtp-relay.brevo.com` |
+| `SMTP_PORT` | `587` |
+| `SMTP_USER` | tu login SMTP de Brevo (NO el email de la cuenta) |
+| `SMTP_PASS` | SMTP key del panel SMTP & API (Secret) |
+| `SMTP_FROM` | `no-reply@tudominio.com` o el email verificado |
+
+**Resend** (3000 emails/mes gratis):
+| Variable | Valor |
 |---|---|
 | `SMTP_HOST` | `smtp.resend.com` |
 | `SMTP_PORT` | `465` |
-| `SMTP_USER` | (de tu proveedor) |
-| `SMTP_PASS` | (mark as **Secret** en Coolify) |
-| `SMTP_FROM` | `no-reply@tudominio.com` |
+| `SMTP_USER` | `resend` (literal) |
+| `SMTP_PASS` | API key `re_...` (Secret) |
+| `SMTP_FROM` | `no-reply@tudominio.com` (dominio verificado) o `onboarding@resend.dev` para sandbox |
+
+**Gmail** (500 emails/día, requiere 2FA + App Password):
+| Variable | Valor |
+|---|---|
+| `SMTP_HOST` | `smtp.gmail.com` |
+| `SMTP_PORT` | `587` |
+| `SMTP_USER` | tu email de Gmail |
+| `SMTP_PASS` | App Password (NO el password normal — generar en https://myaccount.google.com/apppasswords) (Secret) |
+| `SMTP_FROM` | tu email de Gmail |
 
 > ⚠ Marcar `JWT_SECRET`, `JWT_REFRESH_SECRET`, `DATABASE_URL`, `SMTP_PASS` como **Is Secret** en Coolify para que no se vean en logs/UI.
 

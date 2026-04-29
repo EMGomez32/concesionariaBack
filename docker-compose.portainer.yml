@@ -1,0 +1,121 @@
+# ╔═══════════════════════════════════════════════════════════════════════════╗
+# ║ Concesionaria — Stack para Portainer                                      ║
+# ║                                                                           ║
+# ║ Despliega 3 servicios:                                                    ║
+# ║   - db      → PostgreSQL 16 con volumen persistente                       ║
+# ║   - back    → Node.js + Express + Prisma (build desde GitHub)             ║
+# ║   - front   → React + Vite + nginx (build desde GitHub)                   ║
+# ║                                                                           ║
+# ║ NO incluye reverse proxy / SSL — se asume que tenés Traefik o             ║
+# ║ Nginx Proxy Manager separado en otro stack. Ver PORTAINER.md sección 5.   ║
+# ║                                                                           ║
+# ║ Variables a setear en la pestaña "Environment variables" del stack:       ║
+# ║   POSTGRES_PASSWORD          — password fuerte para la DB                 ║
+# ║   JWT_SECRET                 — openssl rand -base64 48                    ║
+# ║   JWT_REFRESH_SECRET         — otro secret distinto                       ║
+# ║   APP_BASE_URL               — URL pública del front (ej: https://app...) ║
+# ║   CORS_ALLOWED_ORIGINS       — URL del front (sin / final)                ║
+# ║   BOOTSTRAP_SUPER_PASSWORD   — password del super_admin que crea bootstrap║
+# ║   VITE_API_BASE_URL          — URL pública del back + /api (build-time)   ║
+# ║   BACKEND_ORIGIN             — URL pública del back sin path (runtime)    ║
+# ║   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM (opcional)        ║
+# ╚═══════════════════════════════════════════════════════════════════════════╝
+
+services:
+
+    # ─────────────────────────── PostgreSQL ───────────────────────────
+    db:
+        image: postgres:16-alpine
+        restart: unless-stopped
+        environment:
+            POSTGRES_DB: concesionaria
+            POSTGRES_USER: concesionaria
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+        volumes:
+            - db_data:/var/lib/postgresql/data
+        networks:
+            - concesionaria-net
+        # ⚠ NO exponer 5432 al host en producción — solo accesible
+        # vía la network interna del stack.
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U concesionaria -d concesionaria"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+        command: ["postgres", "-c", "max_connections=200"]
+
+    # ─────────────────────────── Backend ───────────────────────────
+    back:
+        # Portainer/Docker Compose v2 puede buildear directo desde GitHub.
+        # Sintaxis: <git-url>#<branch>:<subdir>
+        build:
+            context: https://github.com/EMGomez32/concesionariaBack.git#main
+            dockerfile: Dockerfile
+        restart: unless-stopped
+        depends_on:
+            db:
+                condition: service_healthy
+        environment:
+            NODE_ENV: production
+            PORT: 3000
+            DATABASE_URL: postgresql://concesionaria:${POSTGRES_PASSWORD}@db:5432/concesionaria
+            DB_POOL_MAX: 5
+            JWT_SECRET: ${JWT_SECRET}
+            JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+            JWT_EXPIRES_IN: 15m
+            JWT_REFRESH_EXPIRES_IN: 7d
+            CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+            APP_BASE_URL: ${APP_BASE_URL}
+            UPLOADS_DIR: /app/uploads
+            LOG_LEVEL: info
+            # Bootstrap automático del super_admin
+            BOOTSTRAP_SUPER_EMAIL: ${BOOTSTRAP_SUPER_EMAIL:-soporteautenza@gmail.com}
+            BOOTSTRAP_SUPER_PASSWORD: ${BOOTSTRAP_SUPER_PASSWORD}
+            BOOTSTRAP_SUPER_NAME: ${BOOTSTRAP_SUPER_NAME:-Soporte AUTENZA}
+            # SMTP (opcional)
+            SMTP_HOST: ${SMTP_HOST:-}
+            SMTP_PORT: ${SMTP_PORT:-587}
+            SMTP_USER: ${SMTP_USER:-}
+            SMTP_PASS: ${SMTP_PASS:-}
+            SMTP_FROM: ${SMTP_FROM:-}
+        volumes:
+            - back_uploads:/app/uploads
+        networks:
+            - concesionaria-net
+        # En instalaciones SIN reverse proxy (solo para testing/LAN), descomentar:
+        # ports:
+        #     - "3000:3000"
+        # Si usás Traefik, los labels van acá (ver PORTAINER.md sección 5).
+
+    # ─────────────────────────── Frontend ───────────────────────────
+    front:
+        build:
+            context: https://github.com/EMGomez32/ConcesionariaFront.git#main
+            dockerfile: Dockerfile
+            args:
+                # CRÍTICO: Vite bakea esta var en el bundle al hacer build.
+                # Si la cambiás, hay que rebuildear (no basta con restart).
+                VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+        restart: unless-stopped
+        depends_on:
+            - back
+        environment:
+            # Runtime: nginx la usa para parametrizar CSP via envsubst.
+            BACKEND_ORIGIN: ${BACKEND_ORIGIN}
+        networks:
+            - concesionaria-net
+        # En instalaciones SIN reverse proxy, descomentar para acceder
+        # directo al puerto 80 del host:
+        # ports:
+        #     - "80:80"
+
+# ─────────────────────────── Volúmenes y red ───────────────────────────
+volumes:
+    db_data:
+        driver: local
+    back_uploads:
+        driver: local
+
+networks:
+    concesionaria-net:
+        driver: bridge

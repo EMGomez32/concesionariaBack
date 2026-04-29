@@ -29,6 +29,7 @@ import financiacionRoutes from '../interface/routes/financiacion.routes';
 import solicitudRoutes from '../interface/routes/solicitud-financiacion.routes';
 import auditoriaRoutes from '../interface/routes/audit-log.routes';
 import billingRoutes from '../interface/routes/billing.routes';
+import analyticsRoutes from '../modules/analytics/analytics.routes';
 import debugRoutes from '../interface/routes/debug.routes';
 import ApiResponse from '../utils/ApiResponse';
 
@@ -93,5 +94,8 @@ router.use('/auditoria', auditoriaRoutes);
 
 // SaaS Billing
 router.use('/billing', billingRoutes);
+
+// Analytics (KPIs y series temporales para admin/super_admin)
+router.use('/analytics', analyticsRoutes);
 
 export default router;

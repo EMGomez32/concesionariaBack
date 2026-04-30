@@ -1,9 +1,23 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { context } from '../../infrastructure/security/context';
 import { authenticate } from '../middlewares/authenticate.middleware';
 import prisma from '../../infrastructure/database/prisma';
 
 const router = Router();
+
+// Guard: solo super_admin puede ver estos endpoints (defensa adicional al
+// gate por NODE_ENV !== 'production' que vive en routes/index.ts).
+const requireSuperAdmin = (req: Request, res: Response, next: NextFunction) => {
+    const userContext = context.getUser();
+    const isSuper = !!userContext?.roles?.includes('super_admin');
+    if (!isSuper) {
+        return res.status(403).json({
+            success: false,
+            error: { code: 'FORBIDDEN', message: 'Solo super_admin puede acceder a estos endpoints' },
+        });
+    }
+    next();
+};
 
 router.get('/me', authenticate, (req: Request, res: Response) => {
     const userContext = context.getUser();
@@ -20,7 +34,7 @@ router.get('/me', authenticate, (req: Request, res: Response) => {
     });
 });
 
-router.get('/concesionarias-raw', authenticate, async (req: Request, res: Response) => {
+router.get('/concesionarias-raw', authenticate, requireSuperAdmin, async (req: Request, res: Response) => {
     try {
         const userContext = context.getUser();
         
@@ -44,7 +58,7 @@ router.get('/concesionarias-raw', authenticate, async (req: Request, res: Respon
     }
 });
 
-router.get('/usuarios-debug', authenticate, async (req: Request, res: Response) => {
+router.get('/usuarios-debug', authenticate, requireSuperAdmin, async (req: Request, res: Response) => {
     try {
         const userContext = context.getUser();
         const tenantId = context.getTenantId();

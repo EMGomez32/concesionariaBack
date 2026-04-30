@@ -64,8 +64,16 @@ export class PrismaConcesionariaRepository implements IConcesionariaRepository {
         return this.mapToEntity(c);
     }
 
+    /**
+     * Soft-delete: actualiza `deletedAt` en lugar de borrar el registro.
+     * Concesionaria es la raíz multi-tenant; un hard-delete dispararía
+     * cascadas FK que aniquilan todo el tenant.
+     */
     async delete(id: number): Promise<void> {
-        await prisma.concesionaria.delete({ where: { id } });
+        await prisma.concesionaria.update({
+            where: { id },
+            data: { deletedAt: new Date() },
+        });
     }
 
     async countActiveSucursales(id: number): Promise<number> {

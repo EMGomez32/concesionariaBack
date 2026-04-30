@@ -1,7 +1,14 @@
 import { Router } from 'express';
 import { VentaController } from '../controllers/VentaController';
+import { authenticate } from '../middlewares/authenticate.middleware';
+import { authorize } from '../../middlewares/authorize';
 
 const router = Router();
+
+// Todas las rutas de ventas requieren autenticación. Aplicado a nivel router
+// para evitar omisiones por copy-paste. Authorize granular se aplica por
+// método (lectura → cualquier rol logueado; escritura → admin/vendedor).
+router.use(authenticate);
 
 /**
  * @openapi
@@ -74,7 +81,7 @@ router.get('/:id', VentaController.getById);
  *       409: { $ref: '#/components/responses/Conflict' }
  *       422: { $ref: '#/components/responses/InvalidStateTransition' }
  */
-router.post('/', VentaController.create);
+router.post('/', authorize('admin', 'vendedor'), VentaController.create);
 
 /**
  * @openapi
@@ -100,7 +107,7 @@ router.post('/', VentaController.create);
  *       401: { $ref: '#/components/responses/Unauthorized' }
  *       404: { $ref: '#/components/responses/NotFound' }
  */
-router.patch('/:id', VentaController.update);
+router.patch('/:id', authorize('admin'), VentaController.update);
 
 /**
  * @openapi
@@ -126,7 +133,7 @@ router.patch('/:id', VentaController.update);
  *       404: { $ref: '#/components/responses/NotFound' }
  *       422: { $ref: '#/components/responses/InvalidStateTransition' }
  */
-router.patch('/:id/estado-entrega', VentaController.changeEstadoEntrega);
+router.patch('/:id/estado-entrega', authorize('admin', 'vendedor'), VentaController.changeEstadoEntrega);
 
 /**
  * @openapi
@@ -141,7 +148,7 @@ router.patch('/:id/estado-entrega', VentaController.changeEstadoEntrega);
  *       401: { $ref: '#/components/responses/Unauthorized' }
  *       404: { $ref: '#/components/responses/NotFound' }
  */
-router.delete('/:id', VentaController.delete);
+router.delete('/:id', authorize('admin'), VentaController.delete);
 
 // Sub-recursos: pagos
 /**
@@ -184,7 +191,7 @@ router.get('/:id/pagos', VentaController.listPagos);
  *       401: { $ref: '#/components/responses/Unauthorized' }
  *       404: { $ref: '#/components/responses/NotFound' }
  */
-router.post('/:id/pagos', VentaController.addPago);
+router.post('/:id/pagos', authorize('admin', 'vendedor', 'cobrador'), VentaController.addPago);
 
 /**
  * @openapi
@@ -200,7 +207,7 @@ router.post('/:id/pagos', VentaController.addPago);
  *       401: { $ref: '#/components/responses/Unauthorized' }
  *       404: { $ref: '#/components/responses/NotFound' }
  */
-router.delete('/:id/pagos/:pagoId', VentaController.removePago);
+router.delete('/:id/pagos/:pagoId', authorize('admin'), VentaController.removePago);
 
 // Sub-recursos: extras
 /**
@@ -241,7 +248,7 @@ router.get('/:id/extras', VentaController.listExtras);
  *       401: { $ref: '#/components/responses/Unauthorized' }
  *       404: { $ref: '#/components/responses/NotFound' }
  */
-router.post('/:id/extras', VentaController.addExtra);
+router.post('/:id/extras', authorize('admin', 'vendedor'), VentaController.addExtra);
 
 /**
  * @openapi
@@ -257,7 +264,7 @@ router.post('/:id/extras', VentaController.addExtra);
  *       401: { $ref: '#/components/responses/Unauthorized' }
  *       404: { $ref: '#/components/responses/NotFound' }
  */
-router.delete('/:id/extras/:extraId', VentaController.removeExtra);
+router.delete('/:id/extras/:extraId', authorize('admin'), VentaController.removeExtra);
 
 // Sub-recursos: canjes
 /**
@@ -299,7 +306,7 @@ router.get('/:id/canjes', VentaController.listCanjes);
  *       401: { $ref: '#/components/responses/Unauthorized' }
  *       404: { $ref: '#/components/responses/NotFound' }
  */
-router.post('/:id/canjes', VentaController.addCanje);
+router.post('/:id/canjes', authorize('admin', 'vendedor'), VentaController.addCanje);
 
 /**
  * @openapi
@@ -315,6 +322,6 @@ router.post('/:id/canjes', VentaController.addCanje);
  *       401: { $ref: '#/components/responses/Unauthorized' }
  *       404: { $ref: '#/components/responses/NotFound' }
  */
-router.delete('/:id/canjes/:canjeId', VentaController.removeCanje);
+router.delete('/:id/canjes/:canjeId', authorize('admin'), VentaController.removeCanje);
 
 export default router;

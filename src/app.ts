@@ -16,6 +16,13 @@ import { logger } from './infrastructure/logging/logger';
 
 const app = express();
 
+// Detrás de un reverse proxy (Coolify/Traefik/NPM) — confiar en X-Forwarded-*
+// para que `req.ip` y rate-limit tengan la IP real del cliente, no la del
+// proxy. Sin esto, todos los requests aparecen con la IP del bridge Docker
+// y el rate limiter de abajo deja pasar todo. `1` confía en 1 hop (el RP);
+// si hay más layers (CDN → RP → app), aumentar.
+app.set('trust proxy', 1);
+
 // Security Middlewares
 // Versión "dev-friendly":
 //  - HSTS 1 año + includeSubDomains, sin preload (para no quedar atado).
@@ -53,23 +60,39 @@ app.use((_req, res, next) => {
     next();
 });
 
+// Rangos privados que skipean el rate limit (loopback + Docker bridge).
+// Restringido a 172.16.0.0/12 (RFC 1918 — el rango real de Docker), antes
+// estaba `172.*` que cubre todo 172.0.0.0/8 (incluye IPs públicas).
+const isPrivateIp = (ip: string): boolean => {
+    if (!ip) return false;
+    const norm = ip.replace(/^::ffff:/, ''); // IPv4 mapeado a IPv6
+    if (norm === '127.0.0.1' || norm === '::1') return true;
+    // Loopback IPv6 abreviado
+    if (norm.startsWith('::1')) return true;
+    // 172.16.0.0/12 → 172.16.x.x a 172.31.x.x
+    const m = norm.match(/^172\.(\d+)\./);
+    if (m) {
+        const second = parseInt(m[1], 10);
+        return second >= 16 && second <= 31;
+    }
+    // 10.0.0.0/8 (algunos setups Docker custom)
+    if (norm.startsWith('10.')) return true;
+    // 192.168.0.0/16 (LAN)
+    if (norm.startsWith('192.168.')) return true;
+    return false;
+};
+
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 100,
     standardHeaders: 'draft-7',
     legacyHeaders: false,
-    // Skip para healthcheck y para tráfico interno de docker / loopback
-    // (frontend container, tests de integración, healthchecks).
-    // En producción, considerar restringir más.
+    // Skip para healthcheck y para tráfico interno (loopback, Docker bridges,
+    // LAN). El cliente externo nunca debería llegar con una IP de estos rangos
+    // si `trust proxy` está bien configurado.
     skip: (req) => {
         if (req.path === '/health') return true;
-        const ip = req.ip || '';
-        return (
-            ip.includes('127.0.0.1') ||
-            ip.includes('::1') ||
-            ip.startsWith('::ffff:172.') ||
-            ip.startsWith('172.')
-        );
+        return isPrivateIp(req.ip || '');
     },
 });
 app.use(limiter);
@@ -134,12 +157,17 @@ app.use('/uploads', express.static(uploadsDir, { maxAge: '7d', etag: true }));
 // Rutas de la API
 app.use('/api', routes);
 
-// Swagger Documentation
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
-    explorer: true,
-    customCss: '.swagger-ui .topbar { display: none }',
-    customSiteTitle: 'Concesionaria API Docs',
-}));
+// Swagger Documentation — solo expuesto en desarrollo. En producción
+// facilita reconnaissance (lista todos los endpoints, schemas, params)
+// y abre vector de mass-assignment ataques. Si se necesita en prod,
+// gatearlo con basic-auth o IP allowlist.
+if (env.NODE_ENV !== 'production') {
+    app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
+        explorer: true,
+        customCss: '.swagger-ui .topbar { display: none }',
+        customSiteTitle: 'Concesionaria API Docs',
+    }));
+}
 
 // Error Handling
 app.use(notFound);

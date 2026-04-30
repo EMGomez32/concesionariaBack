@@ -3,12 +3,16 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+// Mínimo 32 chars para los JWT secrets — bajo eso es trivial brute-forcear.
+// Generar con: openssl rand -base64 48 (~64 chars).
+const JWT_SECRET_MIN = 32;
+
 const envSchema = z.object({
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
     PORT: z.preprocess((val) => Number(val), z.number().default(3000)),
     DATABASE_URL: z.string().url(),
-    JWT_SECRET: z.string().min(10),
-    JWT_REFRESH_SECRET: z.string().min(10),
+    JWT_SECRET: z.string().min(JWT_SECRET_MIN, `JWT_SECRET debe tener al menos ${JWT_SECRET_MIN} caracteres. Generar con: openssl rand -base64 48`),
+    JWT_REFRESH_SECRET: z.string().min(JWT_SECRET_MIN, `JWT_REFRESH_SECRET debe tener al menos ${JWT_SECRET_MIN} caracteres. Generar con: openssl rand -base64 48`),
     JWT_EXPIRES_IN: z.string().default('15m'),
     JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
     LOG_LEVEL: z.string().default('debug'),

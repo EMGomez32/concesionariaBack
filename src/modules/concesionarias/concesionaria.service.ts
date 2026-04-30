@@ -52,9 +52,17 @@ export const updateConcesionaria = async (id: number, data: Prisma.Concesionaria
     });
 };
 
+/**
+ * Soft-delete: marca `deletedAt` en lugar de borrar el registro.
+ * IMPORTANTE: Concesionaria es la entidad raíz multi-tenant. Un hard-delete
+ * dispararía cascadas FK que bajan TODA la data de un tenant. Aunque la
+ * extensión Prisma intercepta `delete` y lo convierte en update, hacemos el
+ * soft-delete explícito acá para no depender de magic intercepts.
+ */
 export const deleteConcesionaria = async (id: number): Promise<Concesionaria> => {
     await getConcesionariaById(id);
-    return prisma.concesionaria.delete({
+    return prisma.concesionaria.update({
         where: { id },
+        data: { deletedAt: new Date() },
     });
 };

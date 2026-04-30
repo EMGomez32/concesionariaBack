@@ -62,11 +62,18 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
 # `tini` reapa zombies y maneja señales para PM2/Node.
 ENTRYPOINT ["/sbin/tini", "--"]
 
-# Default: prisma db push (sync schema) + init-rls (RLS policies) +
-# bootstrap (roles, plan Free, super_admin si BOOTSTRAP_SUPER_PASSWORD está
-# seteado) + arranca cluster con PM2.
-# Todos los pasos son idempotentes y seguros de re-correr.
-# El comando real puede sobrescribirse en Coolify (Custom Start Command) si
-# preferís separar migración del start (mejor práctica en deploys con
-# múltiples instancias para evitar race conditions).
-CMD ["sh", "-c", "npx prisma db push --accept-data-loss && npm run init-rls && npm run bootstrap && npm run start:cluster"]
+# Arranque: sincroniza schema + RLS + bootstrap + cluster.
+#
+# `prisma db push` (SIN --accept-data-loss) sincroniza el schema con la DB.
+# Si hay un cambio destructivo (drop column con datos), prisma aborta el
+# arranque y el container falla — esto es DESEABLE en producción para
+# forzar al equipo a generar una migración explícita.
+#
+# Para deploys con múltiples instancias (cluster, blue/green), se recomienda:
+#   1. Ejecutar `prisma migrate deploy` en un step de CI/CD (no en cada
+#      arranque del container) y dejar acá solo `start:cluster`.
+#   2. Override de este CMD vía Coolify "Custom Start Command" o
+#      `command:` del compose.
+#
+# init-rls + bootstrap son idempotentes y seguros de re-correr.
+CMD ["sh", "-c", "npx prisma db push && npm run init-rls && npm run bootstrap && npm run start:cluster"]

@@ -31,6 +31,7 @@ import auditoriaRoutes from '../interface/routes/audit-log.routes';
 import billingRoutes from '../interface/routes/billing.routes';
 import analyticsRoutes from '../modules/analytics/analytics.routes';
 import debugRoutes from '../interface/routes/debug.routes';
+import { env } from '../config/env';
 import ApiResponse from '../utils/ApiResponse';
 
 const router = express.Router();
@@ -40,8 +41,12 @@ router.get('/health', (req, res) => {
     res.send(ApiResponse.success({ status: 'UP', timestamp: new Date() }));
 });
 
-// Debug endpoints
-router.use('/debug', debugRoutes);
+// Debug endpoints — SOLO en desarrollo. Estas rutas usan $queryRaw que
+// bypasea RLS y filtran data cross-tenant; no deben estar disponibles en
+// producción aunque tengan authenticate.
+if (env.NODE_ENV !== 'production') {
+    router.use('/debug', debugRoutes);
+}
 
 // Auth + Account (activación, reset password, invitaciones)
 router.use('/auth', authRoutes);

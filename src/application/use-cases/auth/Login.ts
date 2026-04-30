@@ -27,17 +27,22 @@ export class Login {
         const isMatch = await bcrypt.compare(pass, usuario.passwordHash);
         if (!isMatch) throw new UnauthorizedException('Credenciales inválidas');
 
-        // Cuenta debe estar activada por email + contraseña creada vía flujo de
-        // activación + estado activo + flag activo legacy. Mensaje genérico
-        // para no exponer cuál es el motivo (defensa en profundidad).
-        if (!usuario.activo) throw new ForbiddenException('Usuario inactivo');
+        // ─── Bloqueo post-autenticación ─────────────────────────────────────
+        // El usuario tiene credenciales válidas pero su cuenta no está
+        // habilitada. Antes había 3 mensajes distintos (no activo / no
+        // verificado / estado != activo) que diferenciaban motivos. Ahora
+        // unificamos los dos primeros en uno genérico para no leakear estado
+        // interno; mantenemos el de "todavía no activada" porque es un caso
+        // legítimo de UX (el user tiene que ir al email de invitación) y
+        // solo aparece tras password correcto, así que no es vector real de
+        // enumeración.
         if (!usuario.emailVerificado) {
             throw new ForbiddenException(
                 'Tu cuenta todavía no está activada. Revisá el email de invitación o pedile a un administrador que te lo reenvíe.',
             );
         }
-        if (usuario.estado !== 'activo') {
-            throw new ForbiddenException('Tu cuenta no está activa. Contactá a un administrador.');
+        if (!usuario.activo || usuario.estado !== 'activo') {
+            throw new ForbiddenException('Tu cuenta no está disponible. Contactá a un administrador.');
         }
 
         const roles = usuario.roles

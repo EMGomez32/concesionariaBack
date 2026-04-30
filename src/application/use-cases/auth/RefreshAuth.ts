@@ -18,6 +18,9 @@ export class RefreshAuth {
 
             if (!stored) throw new Error('Not found');
 
+            // Reuse detection: si el token ya estaba revocado y alguien intenta
+            // usarlo de nuevo, asumimos compromiso → revocar TODA la familia
+            // de tokens del usuario para forzar relogin.
             if (stored.isRevoked) {
                 await this.refreshTokenRepository.revokeAllForUser(stored.usuarioId);
                 throw new Error('Revoked');
@@ -28,8 +31,16 @@ export class RefreshAuth {
             const usuario = await prisma.usuario.findUnique({ where: { id: payload.userId } });
             if (!usuario || !usuario.activo) throw new Error('Invalid user');
 
-            // Rotation
-            await this.refreshTokenRepository.update(stored.id, { isRevoked: true });
+            // Rotación atómica: el repo devuelve `false` si otro request
+            // concurrente ya revocó este token (race condition). En ese caso
+            // tratamos como reuse: revocamos todos los tokens del user y
+            // rechazamos. Antes era un `update` simple que pasaba en ambos
+            // requests → ambos generaban tokens válidos.
+            const won = await this.refreshTokenRepository.revokeIfActive(stored.id);
+            if (!won) {
+                await this.refreshTokenRepository.revokeAllForUser(stored.usuarioId);
+                throw new Error('Concurrent reuse detected');
+            }
 
             const newPayload = { ...payload };
             const access = this.tokenService.generateAccessToken(newPayload);

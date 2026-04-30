@@ -1,0 +1,9 @@
+dist/
+node_modules/
+coverage/
+logs/
+uploads/
+__legacy_tests__/
+prisma/migrations/
+package-lock.json
+*.md

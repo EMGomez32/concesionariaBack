@@ -33,6 +33,19 @@ export class PrismaRefreshTokenRepository implements IRefreshTokenRepository {
         });
     }
 
+    /**
+     * Atomic compare-and-swap: si la fila todavía está activa, la revoca y
+     * devuelve true. Si ya fue revocada por otro request concurrente,
+     * devuelve false sin tocar nada (el caller debe tratarlo como reuse).
+     */
+    async revokeIfActive(id: number): Promise<boolean> {
+        const result = await prisma.refreshToken.updateMany({
+            where: { id, isRevoked: false },
+            data: { isRevoked: true }
+        });
+        return result.count === 1;
+    }
+
     private mapToEntity(r: any): RefreshToken {
         return new RefreshToken(r.id, r.token, r.usuarioId, r.expiresAt, r.isRevoked, r.createdAt);
     }

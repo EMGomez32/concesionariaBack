@@ -90,10 +90,26 @@ export const createUsuario = async (data: {
     });
 };
 
-export const updateUsuario = async (id: number, data: any) => {
-    const { password, roleIds, ...userData } = data;
+// Mass-assignment guard: solo estos campos son editables vía este endpoint.
+// `concesionariaId`, `passwordHash`, `emailVerificado`, `estado` quedan
+// excluidos para que un cliente no pueda escalar privilegios o cambiar
+// de tenant mandándolos en el body.
+const USUARIO_UPDATE_ALLOWED = [
+    'nombre',
+    'email',
+    'telefono',
+    'direccion',
+    'activo',
+    'sucursalId',
+] as const;
 
-    const updateData: any = { ...userData };
+export const updateUsuario = async (id: number, data: any) => {
+    const { password, roleIds } = data;
+
+    const updateData: any = {};
+    for (const key of USUARIO_UPDATE_ALLOWED) {
+        if (data[key] !== undefined) updateData[key] = data[key];
+    }
     if (password) {
         updateData.passwordHash = await bcrypt.hash(password, 10);
     }

@@ -4,6 +4,31 @@ import bcrypt from 'bcrypt';
 import prisma from '../../../infrastructure/database/prisma';
 import { context } from '../../../infrastructure/security/context';
 
+// Allowlist explícita de campos editables vía PATCH /usuarios/:id.
+// Un cliente puede mandar `concesionariaId`, `passwordHash`, `emailVerificado`,
+// `estado` en el body — sin esta lista, todos pasaban derecho al repo y un
+// usuario común podía cambiar de tenant, marcar su propio email como
+// verificado o setear directamente el hash de password (bypass del bcrypt).
+//
+// `password` se deja afuera porque se hashea aparte; `roleIds` también porque
+// tiene su propia lógica de control (super_admin only).
+const ALLOWED_FIELDS = [
+    'nombre',
+    'email',
+    'telefono',
+    'direccion',
+    'activo',
+    'sucursalId',
+] as const;
+
+const pickAllowed = (data: Record<string, unknown>): Record<string, unknown> => {
+    const out: Record<string, unknown> = {};
+    for (const key of ALLOWED_FIELDS) {
+        if (data[key] !== undefined) out[key] = data[key];
+    }
+    return out;
+};
+
 export class UpdateUsuario {
     constructor(private readonly usuarioRepository: IUsuarioRepository) { }
 
@@ -13,18 +38,21 @@ export class UpdateUsuario {
             throw new NotFoundException('Usuario');
         }
 
-        const { password, ...updateData } = data;
+        const { password, roleIds } = data;
+        const updateData: Record<string, unknown> = pickAllowed(data);
+        if (Array.isArray(roleIds)) updateData.roleIds = roleIds;
 
         // HU-11: si cambia el email, validar unicidad antes de tirar P2002.
-        if (updateData.email && updateData.email !== exists.email) {
+        const newEmail = typeof updateData.email === 'string' ? updateData.email : undefined;
+        if (newEmail && newEmail !== exists.email) {
             const dup = await this.usuarioRepository.findByEmailInConcesionaria(
-                updateData.email,
+                newEmail,
                 exists.concesionariaId
             );
             if (dup && dup.id !== id) {
                 throw new BaseException(
                     409,
-                    `Ya existe otro usuario con email ${updateData.email} en esta concesionaria`,
+                    `Ya existe otro usuario con email ${newEmail} en esta concesionaria`,
                     'EMAIL_DUPLICATED'
                 );
             }

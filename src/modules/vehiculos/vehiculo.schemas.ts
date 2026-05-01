@@ -47,5 +47,11 @@ export const updateVehiculoSchema = z.object({
     observaciones: z.string().max(2000).optional(),
 });
 
+export const transferVehiculoSchema = z.object({
+    sucursalDestinoId: z.coerce.number().int().positive('sucursalDestinoId requerido'),
+    motivo: z.string().max(500).optional(),
+});
+
 export type CreateVehiculoInput = z.infer<typeof createVehiculoSchema>;
 export type UpdateVehiculoInput = z.infer<typeof updateVehiculoSchema>;
+export type TransferVehiculoInput = z.infer<typeof transferVehiculoSchema>;

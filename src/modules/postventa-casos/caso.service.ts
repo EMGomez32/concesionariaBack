@@ -63,3 +63,20 @@ export const updateCaso = async (id: number, data: Prisma.PostventaCasoUpdateInp
 export const deleteCaso = async (id: number) => {
     return prisma.postventaCaso.delete({ where: { id } });
 };
+
+/**
+ * HU-84: total de items del caso. Devuelve { casoId, total, count }.
+ * Migrado de interface/controllers/PostventaCasoController.total (Sprint 4 cont).
+ */
+export const getCasoTotal = async (id: number) => {
+    const r = await prisma.postventaItem.aggregate({
+        where: { casoId: id },
+        _sum: { monto: true },
+        _count: true,
+    });
+    return {
+        casoId: id,
+        total: Number(r._sum.monto ?? 0),
+        count: r._count,
+    };
+};

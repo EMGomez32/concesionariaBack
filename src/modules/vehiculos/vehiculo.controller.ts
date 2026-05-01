@@ -104,3 +104,36 @@ export const deleteVehiculo = catchAsync(async (req: Request, res: Response) => 
 
     res.send(ApiResponse.success({ message: 'Vehículo eliminado con éxito' }));
 });
+
+/**
+ * Transfiere un vehículo de una sucursal a otra (mismo tenant).
+ * Crea un VehiculoMovimiento de tipo "traslado" en la misma transacción.
+ * Migrado desde interface/controllers/VehiculoController.ts (Sprint 4 cont).
+ */
+export const transferirVehiculo = catchAsync(async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id as string, 10);
+    const { sucursalDestinoId, motivo } = req.body;
+    const user = req.user;
+
+    const current = await vehiculoService.getVehiculoById(id);
+    requireSameTenant(user, current.concesionariaId);
+
+    const result = await vehiculoService.transferirVehiculo(
+        id,
+        Number(sucursalDestinoId),
+        motivo,
+    );
+
+    if (user) {
+        await auditoriaService.createAuditLog({
+            concesionariaId: user.concesionariaId as number,
+            usuarioId: user.userId,
+            entidad: 'Vehiculo',
+            entidadId: id,
+            accion: 'update',
+            detalle: `Vehículo transferido a sucursal ${sucursalDestinoId}`,
+        });
+    }
+
+    res.send(ApiResponse.success(result));
+});

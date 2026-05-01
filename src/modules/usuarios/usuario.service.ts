@@ -136,3 +136,24 @@ export const deleteUsuario = async (id: number) => {
         where: { id },
     });
 };
+
+/**
+ * Reset de password administrativo. Migrado desde
+ * application/use-cases/usuarios/ResetPassword.ts (Sprint 4 cont).
+ * Mínimo 8 chars (antes era 6 — actualizado a la política recomendada).
+ */
+export const resetPassword = async (id: number, newPassword: string) => {
+    if (!newPassword || newPassword.length < 8) {
+        throw new ApiError(
+            400,
+            'La contraseña debe tener al menos 8 caracteres',
+            'VALIDATION_ERROR',
+        );
+    }
+    await getUsuarioById(id);
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    return prisma.usuario.update({
+        where: { id },
+        data: { passwordHash },
+    });
+};

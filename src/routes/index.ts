@@ -8,7 +8,8 @@ import sucursalRoutes from '../modules/sucursales/sucursal.routes';
 import marcaRoutes from '../modules/marcas/marca.routes';
 import modeloRoutes from '../modules/modelos/modelo.routes';
 import versionRoutes from '../modules/versiones/version.routes';
-import usuarioRoutes from '../interface/routes/usuario.routes';
+// usuarios: migrado interface/ → modules/ (Sprint 4 cont).
+import usuarioRoutes from '../modules/usuarios/usuario.routes';
 import rolRoutes from '../interface/routes/rol.routes';
 // Migrado de interface/ → modules/ (Sprint 4 piloto). Tiene validación Zod
 // y los mismos endpoints. El interface/routes/cliente.routes.ts queda
@@ -16,7 +17,8 @@ import rolRoutes from '../interface/routes/rol.routes';
 import clienteRoutes from '../modules/clientes/cliente.routes';
 // proveedores: migrado de interface/ → modules/ (Sprint 4).
 import proveedorRoutes from '../modules/proveedores/proveedor.routes';
-import vehiculoRoutes from '../interface/routes/vehiculo.routes';
+// vehiculos: migrado interface/ → modules/ (Sprint 4 cont) con /transferir.
+import vehiculoRoutes from '../modules/vehiculos/vehiculo.routes';
 import archivoRoutes from '../interface/routes/vehiculo-archivo.routes';
 import movimientoRoutes from '../interface/routes/vehiculo-movimiento.routes';
 import ingresoRoutes from '../interface/routes/ingreso-vehiculo.routes';
@@ -28,7 +30,8 @@ import gastoRoutes from '../interface/routes/gasto.routes';
 import categoriaRoutes from '../interface/routes/categoria-gasto.routes';
 import gastoFijoRoutes from '../interface/routes/gasto-fijo.routes';
 import categoriaFijoRoutes from '../interface/routes/categoria-gasto-fijo.routes';
-import casoRoutes from '../interface/routes/postventa-caso.routes';
+// postventa-casos: migrado interface/ → modules/ (Sprint 4 cont) con /total.
+import casoRoutes from '../modules/postventa-casos/caso.routes';
 import itemRoutes from '../interface/routes/postventa-item.routes';
 import financieraRoutes from '../interface/routes/financiera.routes';
 import financiacionRoutes from '../interface/routes/financiacion.routes';

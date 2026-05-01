@@ -86,6 +86,35 @@ export const updateUsuario = catchAsync(async (req: Request, res: Response) => {
     res.send(ApiResponse.success(result));
 });
 
+/**
+ * Reset administrativo de password (solo admin/super_admin).
+ * Migrado desde interface/controllers/UsuarioController.ts (Sprint 4 cont).
+ * Para self-service de reset, ver /api/account/* (ResetPassword via email).
+ */
+export const resetPassword = catchAsync(async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id as string, 10);
+    const { password } = req.body ?? {};
+    const user = req.user;
+
+    const current = await usuarioService.getUsuarioById(id);
+    requireSameTenant(user, current.concesionariaId);
+
+    await usuarioService.resetPassword(id, password);
+
+    if (user) {
+        await auditoriaService.createAuditLog({
+            concesionariaId: user.concesionariaId as number,
+            usuarioId: user.userId,
+            entidad: 'Usuario',
+            entidadId: id,
+            accion: 'update',
+            detalle: `Reset de contraseña administrativo para usuario ${id}`,
+        });
+    }
+
+    res.send(ApiResponse.success({ message: 'Password reseteado con éxito' }));
+});
+
 export const deleteUsuario = catchAsync(async (req: Request, res: Response) => {
     const id = parseInt(req.params.id as string, 10);
     const user = req.user;

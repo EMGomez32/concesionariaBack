@@ -160,3 +160,61 @@ export const deleteVehiculo = async (id: number) => {
         where: { id },
     });
 };
+
+/**
+ * Transferir vehículo de una sucursal a otra (mismo tenant).
+ * Migrado desde application/use-cases/vehiculos/TransferVehiculo.ts.
+ * Crea un VehiculoMovimiento de tipo "traslado" en la misma tx.
+ */
+export const transferirVehiculo = async (
+    vehiculoId: number,
+    sucursalDestinoId: number,
+    motivo?: string,
+) => {
+    if (!sucursalDestinoId) {
+        throw new ApiError(400, 'sucursalDestinoId es obligatorio', 'VALIDATION_ERROR');
+    }
+
+    const vehiculo = await prisma.vehiculo.findUnique({ where: { id: vehiculoId } });
+    if (!vehiculo) throw new ApiError(404, 'Vehículo no encontrado', 'NOT_FOUND');
+
+    if (vehiculo.sucursalId === sucursalDestinoId) {
+        throw new ApiError(400, 'El vehículo ya está en la sucursal destino', 'INVALID_VALUE');
+    }
+
+    const sucursalDestino = await prisma.sucursal.findUnique({
+        where: { id: sucursalDestinoId },
+    });
+    if (!sucursalDestino) {
+        throw new ApiError(404, 'Sucursal destino no encontrada', 'NOT_FOUND');
+    }
+    if (sucursalDestino.concesionariaId !== vehiculo.concesionariaId) {
+        throw new ApiError(
+            400,
+            'La sucursal destino pertenece a otra concesionaria',
+            'INVALID_VALUE',
+        );
+    }
+
+    const desdeSucursalId = vehiculo.sucursalId;
+
+    return prisma.$transaction(async (tx) => {
+        const updated = await tx.vehiculo.update({
+            where: { id: vehiculoId },
+            data: { sucursalId: sucursalDestinoId },
+        });
+
+        await tx.vehiculoMovimiento.create({
+            data: {
+                concesionariaId: vehiculo.concesionariaId,
+                vehiculoId,
+                desdeSucursalId,
+                hastaSucursalId: sucursalDestinoId,
+                tipo: 'traslado',
+                motivo: motivo ?? 'Traslado entre sucursales',
+            },
+        });
+
+        return updated;
+    });
+};

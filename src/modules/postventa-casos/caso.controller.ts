@@ -51,3 +51,13 @@ export const deleteCaso = catchAsync(async (req: Request, res: Response) => {
     await casoService.deleteCaso(id);
     res.send(ApiResponse.success({ message: 'Caso eliminado' }));
 });
+
+/**
+ * HU-84: total de items del caso (suma de monto + count).
+ * Migrado desde interface/controllers/PostventaCasoController.ts.
+ */
+export const getCasoTotal = catchAsync(async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id as string, 10);
+    const result = await casoService.getCasoTotal(id);
+    res.send(ApiResponse.success(result));
+});

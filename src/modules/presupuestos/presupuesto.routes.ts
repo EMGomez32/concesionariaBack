@@ -10,13 +10,39 @@ const router = express.Router();
 
 router
     .route('/')
-    .post(authenticate, tenancy, authorize('admin', 'vendedor'), presupuestoValidation.createPresupuesto, validate, presupuestoController.createPresupuesto)
+    .post(
+        authenticate,
+        tenancy,
+        authorize('admin', 'vendedor'),
+        presupuestoValidation.createPresupuesto,
+        validate,
+        presupuestoController.createPresupuesto,
+    )
     .get(authenticate, tenancy, presupuestoController.getPresupuestos);
+
+// HU-60: total del presupuesto. Antes en interface/, migrado Sprint 4 cont.
+router.get('/:id/total', authenticate, tenancy, presupuestoController.getPresupuestoTotal);
+
+// Convertir presupuesto aceptado en venta (Sprint 4 cont).
+router.post(
+    '/:id/convertir-en-venta',
+    authenticate,
+    tenancy,
+    authorize('admin', 'vendedor'),
+    presupuestoController.convertirEnVenta,
+);
 
 router
     .route('/:id')
     .get(authenticate, tenancy, presupuestoController.getPresupuesto)
-    .patch(authenticate, tenancy, authorize('admin', 'vendedor'), presupuestoValidation.updatePresupuesto, validate, presupuestoController.updatePresupuesto)
+    .patch(
+        authenticate,
+        tenancy,
+        authorize('admin', 'vendedor'),
+        presupuestoValidation.updatePresupuesto,
+        validate,
+        presupuestoController.updatePresupuesto,
+    )
     .delete(authenticate, tenancy, authorize('admin'), presupuestoController.deletePresupuesto);
 
 export default router;

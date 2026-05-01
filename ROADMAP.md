@@ -9,7 +9,7 @@ Plan de mejoras post-auditoría arquitectónica de abril 2026.
 | **Sprint 1 — "No nos rompan"** | ✅ Done | 7 vulnerabilidades críticas cerradas (debug routes, ventas sin auth, secrets hardcoded, swagger en prod, db push --accept-data-loss, hard-delete Concesionaria, JWT min 10) |
 | **Sprint 2 — Estabilidad** | ✅ Done | TOCTOU createVenta, refresh atómico, axios lock, graceful shutdown, logger JSON, mass assignment, email enumeration, ESLint backend, Prettier |
 | **Sprint 3 — Profesionalizar** | ✅ Done (parcial) | CI GitHub Actions, métricas Prometheus, Sentry SDK, /livez vs /readyz, outbox emails, soft-delete fantasma, FormField wrapper, ARCHITECTURE.md |
-| **Sprint 4 — Refactors estructurales** | 🟡 In progress | Foundations hechas: Zod + validateZod, OpenAPI codegen, withTenantTx, migración piloto clientes, refactor parcial PresupuestosPage |
+| **Sprint 4 — Refactors estructurales** | 🟢 95% | 22 de 25 dominios migrados (88%). Solo quedan postventa-item, vehiculo-archivo, solicitud-financiacion (todos con uploads multer). 12 schemas Zod activos. PresupuestosPage 1010→744 LOC, 3 modales extraídos |
 | **Sprint 5 — Compliance** | ⏳ TODO | Ley 25.326, AFIP WSFE, UIF |
 
 ---

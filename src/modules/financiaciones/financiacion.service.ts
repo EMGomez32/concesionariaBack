@@ -112,3 +112,15 @@ export const getFinanciacionById = async (id: number) => {
     if (!result) throw new ApiError(404, 'Financiación no encontrada');
     return result;
 };
+
+/** Update financiación (Sprint 4 cont). */
+export const updateFinanciacion = async (id: number, data: Prisma.FinanciacionUpdateInput) => {
+    await getFinanciacionById(id);
+    return prisma.financiacion.update({ where: { id }, data });
+};
+
+/** Soft-delete financiación (extension Prisma intercepta). */
+export const deleteFinanciacion = async (id: number) => {
+    await getFinanciacionById(id);
+    return prisma.financiacion.delete({ where: { id } });
+};

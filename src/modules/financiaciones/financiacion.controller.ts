@@ -45,3 +45,25 @@ export const pagarCuota = catchAsync(async (req: Request, res: Response) => {
     const result = await financiacionService.registrarPagoCuota(id, req.body);
     res.send(ApiResponse.success(result));
 });
+
+/**
+ * Update financiación (Sprint 4 cont — port desde interface/).
+ */
+export const updateFinanciacion = catchAsync(async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id as string, 10);
+    const current = await financiacionService.getFinanciacionById(id);
+    requireSameTenant(req.user, current.concesionariaId);
+    const result = await financiacionService.updateFinanciacion(id, req.body);
+    res.send(ApiResponse.success(result));
+});
+
+/**
+ * Delete (soft) financiación (Sprint 4 cont — port desde interface/).
+ */
+export const deleteFinanciacion = catchAsync(async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id as string, 10);
+    const current = await financiacionService.getFinanciacionById(id);
+    requireSameTenant(req.user, current.concesionariaId);
+    await financiacionService.deleteFinanciacion(id);
+    res.send(ApiResponse.success({ message: 'Financiación eliminada' }));
+});

@@ -10,15 +10,36 @@ const router = express.Router();
 
 router
     .route('/')
-    .post(authenticate, tenancy, authorize('admin', 'cobrador'), financiacionValidation.createFinanciacion, validate, financiacionController.createFinanciacion)
+    .post(
+        authenticate,
+        tenancy,
+        authorize('admin', 'cobrador'),
+        financiacionValidation.createFinanciacion,
+        validate,
+        financiacionController.createFinanciacion,
+    )
     .get(authenticate, tenancy, financiacionController.getFinanciaciones);
 
 router
     .route('/:id')
-    .get(authenticate, tenancy, financiacionController.getFinanciacion);
+    .get(authenticate, tenancy, financiacionController.getFinanciacion)
+    .patch(
+        authenticate,
+        tenancy,
+        authorize('admin'),
+        financiacionController.updateFinanciacion,
+    )
+    .delete(authenticate, tenancy, authorize('admin'), financiacionController.deleteFinanciacion);
 
 router
     .route('/cuotas/:cuotaId/pagar')
-    .patch(authenticate, tenancy, authorize('admin', 'cobrador'), financiacionValidation.updateCuota, validate, financiacionController.pagarCuota);
+    .patch(
+        authenticate,
+        tenancy,
+        authorize('admin', 'cobrador'),
+        financiacionValidation.updateCuota,
+        validate,
+        financiacionController.pagarCuota,
+    );
 
 export default router;

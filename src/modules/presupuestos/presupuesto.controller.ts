@@ -60,3 +60,27 @@ export const deletePresupuesto = catchAsync(async (req: Request, res: Response) 
     await presupuestoService.deletePresupuesto(id);
     res.send(ApiResponse.success({ message: 'Presupuesto eliminado' }));
 });
+
+/**
+ * HU-60: total del presupuesto = sum(items.precioFinal) + sum(extras.monto)
+ *        - canje.valorTomado.
+ * Migrado desde interface/controllers/PresupuestoController.total.
+ */
+export const getPresupuestoTotal = catchAsync(async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id as string, 10);
+    const result = await presupuestoService.getPresupuestoTotal(id);
+    res.send(ApiResponse.success(result));
+});
+
+/**
+ * Convertir presupuesto aceptado en venta. Reusa modules/ventas/createVenta
+ * (que ya tiene SELECT FOR UPDATE para evitar TOCTOU). Migrado desde
+ * application/use-cases/presupuestos/ConvertPresupuestoToVenta.
+ */
+export const convertirEnVenta = catchAsync(async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id as string, 10);
+    const current = await presupuestoService.getPresupuestoById(id);
+    requireSameTenant(req.user, current.concesionariaId);
+    const venta = await presupuestoService.convertirEnVenta(id, req.body);
+    res.status(201).send(ApiResponse.success(venta));
+});

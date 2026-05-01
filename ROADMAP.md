@@ -27,9 +27,22 @@ Plan de mejoras post-auditoría arquitectónica de abril 2026.
 
 ✅ **`withTenantTx` helper**: en `infrastructure/database/withTenantTx.ts`. Abre UNA transacción, setea GUCs (`app.tenant_id`, `app.is_super_admin`) una vez, pasa `tx` "crudo" al callback. Reemplaza el patrón de `prisma.$transaction(...)` que con la extensión de Prisma generaba tx anidadas. Adoptarlo gradualmente en services nuevos.
 
-✅ **Migración piloto clientes** `interface/` → `modules/`: el `routes/index.ts` ahora importa `modules/clientes/cliente.routes.ts` (con Zod + tenancy + authenticate) en lugar del legacy. Foundation para migrar el resto en sucesivos PRs (cliente por cliente, un dominio por sprint).
+✅ **Migración interface/ → modules/**: 4 dominios migrados (clientes, sucursales, proveedores, reservas) con paridad exacta de endpoints + Zod validation. Otros 18 dominios pendientes — algunos requieren port de endpoints específicos antes de migrar.
 
-✅ **Refactor parcial PresupuestosPage**: 1010 → 918 LOC. Extraídos `presupuestos.types.ts` y `presupuestos.utils.ts` (FORMA_PAGO_OPTIONS_CONV, fmt, currencyFmt, STATUS, blank rows). Los modales internos quedan para Sprint 5+.
+✅ **Refactor PresupuestosPage**: **1010 → 744 LOC** (-26%). Extraídos:
+- `presupuestos.types.ts` (11 interfaces)
+- `presupuestos.utils.ts` (helpers, constantes, calcTotal)
+- `modals/EditPresupuestoModal.tsx`
+- `modals/ConvertirAVentaModal.tsx`
+- `modals/DetailPresupuestoModal.tsx`
+
+Solo queda el CreatePresupuestoModal (~199 LOC) — conviene refactorizar con react-hook-form + Zod resolver.
+
+✅ **Refactor parcial VentasPage**: 799 → 751 LOC. Extraídos:
+- `ventas.types.ts` (PagoRow, ExtraRow, CanjeRow, VentaForm, BadgeVariant)
+- `ventas.utils.ts` (status maps, transitions, factories)
+
+✅ **Schemas Zod**: caja, clientes, sucursales, proveedores, reservas, vehiculos (preparado para próxima migración), gasto-fijo. 7 módulos cubiertos, 18 pendientes.
 
 ### Pendiente del Sprint 4 (incremental)
 

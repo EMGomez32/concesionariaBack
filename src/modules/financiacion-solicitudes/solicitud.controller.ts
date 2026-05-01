@@ -4,6 +4,43 @@ import catchAsync from '../../utils/catchAsync';
 import pick from '../../utils/pick';
 import parseNumericFields from '../../utils/parseNumericFields';
 import ApiResponse from '../../utils/ApiResponse';
+import ApiError from '../../utils/ApiError';
+
+export const getSolicitud = catchAsync(async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id as string, 10);
+    const result = await solicitudService.getSolicitudById(id);
+    res.send(ApiResponse.success(result));
+});
+
+/* ── Sub-recursos: archivos ── */
+
+export const listArchivos = catchAsync(async (req: Request, res: Response) => {
+    const solicitudId = parseInt(req.params.id as string, 10);
+    const result = await solicitudService.listArchivos(solicitudId);
+    res.send(ApiResponse.success(result));
+});
+
+export const uploadArchivo = catchAsync(async (req: Request, res: Response) => {
+    const solicitudId = parseInt(req.params.id as string, 10);
+    const file = (req as Request & { file?: Express.Multer.File }).file;
+    if (!file) {
+        throw new ApiError(400, 'Archivo requerido (campo "file")', 'VALIDATION_ERROR');
+    }
+    const result = await solicitudService.uploadArchivo({
+        solicitudId,
+        file,
+        tipo: req.body.tipo ?? null,
+        descripcion: req.body.descripcion ?? null,
+        uploadedById: req.user?.userId ?? null,
+    });
+    res.status(201).send(ApiResponse.success(result));
+});
+
+export const deleteArchivo = catchAsync(async (req: Request, res: Response) => {
+    const archivoId = parseInt(req.params.archivoId as string, 10);
+    await solicitudService.deleteArchivo(archivoId);
+    res.send(ApiResponse.success({ message: 'Archivo eliminado' }));
+});
 
 export const getSolicitudes = catchAsync(async (req: Request, res: Response) => {
     let filter = pick(req.query, ['estado', 'clienteId', 'vehiculoId', 'financieraId', 'concesionariaId']);

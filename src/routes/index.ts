@@ -20,7 +20,9 @@ import clienteRoutes from '../modules/clientes/cliente.routes';
 import proveedorRoutes from '../modules/proveedores/proveedor.routes';
 // vehiculos: migrado interface/ → modules/ (Sprint 4 cont) con /transferir.
 import vehiculoRoutes from '../modules/vehiculos/vehiculo.routes';
-import archivoRoutes from '../interface/routes/vehiculo-archivo.routes';
+// vehiculo-archivos: migrado interface/ → modules/ (Sprint 4 cont) con
+// upload multipart (multer + storage adapter).
+import archivoRoutes from '../modules/vehiculo-archivos/archivo.routes';
 import movimientoRoutes from '../modules/vehiculo-movimientos/movimiento.routes';
 import ingresoRoutes from '../modules/vehiculo-ingresos/ingreso.routes';
 // reservas: migrado de interface/ → modules/ (Sprint 4).
@@ -37,12 +39,16 @@ import gastoFijoRoutes from '../modules/gastos-fijos/gasto-fijo.routes';
 import categoriaFijoRoutes from '../modules/gastos-fijos-categorias/categoria.routes';
 // postventa-casos: migrado interface/ → modules/ (Sprint 4 cont) con /total.
 import casoRoutes from '../modules/postventa-casos/caso.routes';
-import itemRoutes from '../interface/routes/postventa-item.routes';
+// postventa-items: migrado interface/ → modules/ (Sprint 4 cont).
+// Schema Zod alineado con Prisma (monto, no costo+precio del module viejo).
+import itemRoutes from '../modules/postventa-items/item.routes';
 // financieras: migrado interface/ → modules/ (Sprint 4 cont).
 import financieraRoutes from '../modules/financieras/financiera.routes';
 // financiaciones: migrado interface/ → modules/ (Sprint 4 cont).
 import financiacionRoutes from '../modules/financiaciones/financiacion.routes';
-import solicitudRoutes from '../interface/routes/solicitud-financiacion.routes';
+// solicitud-financiacion: migrado interface/ → modules/ (Sprint 4 cont)
+// con sub-recursos /:id/archivos (list/upload/delete).
+import solicitudRoutes from '../modules/financiacion-solicitudes/solicitud.routes';
 import auditoriaRoutes from '../modules/auditoria/auditoria.routes';
 import billingRoutes from '../modules/billing/billing.routes';
 import analyticsRoutes from '../modules/analytics/analytics.routes';

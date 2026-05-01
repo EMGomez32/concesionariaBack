@@ -8,6 +8,12 @@ import { context } from '../security/context';
 //   - wraps every operation in a transaction that sets `app.tenant_id`
 //     and `app.is_super_admin`, so Postgres RLS policies see the right
 //     context for the row.
+// Lista de modelos con soft-delete. DEBE coincidir EXACTAMENTE con los
+// nombres de modelo en `schema.prisma` (la extensión los matchea por nombre).
+//
+// Antes había un fantasma: `PresupuestoCanjeVehiculo` que NO existe en el
+// schema (el real se llama `PresupuestoCanje`). Resultado: borrar un canje
+// hacía hard-delete porque no matcheaba la lista. Fixeado.
 const SOFT_DELETE_MODELS = [
     'Concesionaria',
     'Sucursal',
@@ -22,7 +28,7 @@ const SOFT_DELETE_MODELS = [
     'Presupuesto',
     'PresupuestoItem',
     'PresupuestoExtra',
-    'PresupuestoCanjeVehiculo',
+    'PresupuestoCanje',
     'Venta',
     'VentaPago',
     'VentaExtra',
@@ -36,8 +42,15 @@ const SOFT_DELETE_MODELS = [
     'CategoriaGastoFijo',
     'Financiera',
     'SolicitudFinanciacion',
+    'SolicitudFinanciacionArchivo',
     'PostventaCaso',
     'PostventaItem',
+    'Caja',
+    'MovimientoCaja',
+    'CierreCaja',
+    'Marca',
+    'Modelo',
+    'VersionVehiculo',
 ];
 
 // Models without `concesionaria_id`. They skip RLS wrapping AND tenant

@@ -1,32 +1,42 @@
 /**
- * Singleton del transport de email. En arranque elige la implementación
- * según env vars: si hay SMTP_HOST configurado, usa SmtpTransport;
- * si no, usa ConsoleTransport (los emails van al log).
+ * Email service con outbox pattern.
+ *
+ * El service.send() NO manda SMTP directo — persiste el mensaje en la tabla
+ * `email_outbox` y un worker async lo drainea con retries (ver outbox.service).
+ *
+ * Esto desacopla el HTTP request del SMTP:
+ *   - Antes: alta de usuario tarda 5-30s si SMTP está lento, falla si SMTP cae.
+ *   - Ahora: alta tarda ~5ms, el email sale en background con retries.
+ *
+ * En tests (NODE_ENV=test) usamos ConsoleTransport directo para que los
+ * tests no dependan de la tabla outbox ni del worker.
  */
 import { IEmailTransport } from './IEmailTransport';
 import { ConsoleTransport } from './ConsoleTransport';
-import { SmtpTransport } from './SmtpTransport';
+import { enqueueEmail } from './outbox.service';
 import { logger } from '../logging/logger';
 
 let transport: IEmailTransport | null = null;
 
+class OutboxTransport implements IEmailTransport {
+    async send(msg: { to: string; subject: string; html: string; text: string }): Promise<void> {
+        await enqueueEmail(msg);
+    }
+}
+
 export function getEmailTransport(): IEmailTransport {
     if (transport) return transport;
 
-    if (process.env.SMTP_HOST) {
-        transport = new SmtpTransport({
-            host: process.env.SMTP_HOST,
-            port: Number(process.env.SMTP_PORT ?? 587),
-            user: process.env.SMTP_USER ?? '',
-            pass: process.env.SMTP_PASS ?? '',
-            from: process.env.SMTP_FROM ?? 'no-reply@autenza.local',
-        });
-        logger.info(`[email] SMTP transport activo (host=${process.env.SMTP_HOST})`);
+    // En tests, no usamos outbox (no hay worker corriendo).
+    if (process.env.NODE_ENV === 'test') {
+        transport = new ConsoleTransport();
         return transport;
     }
 
-    transport = new ConsoleTransport();
-    logger.warn('[email] SMTP_HOST no configurado — usando ConsoleTransport (los emails van al log)');
+    // En cualquier otro entorno (dev/prod) usamos outbox. El worker decide
+    // el transport real (SMTP o Console) según SMTP_HOST.
+    transport = new OutboxTransport();
+    logger.info('[email] OutboxTransport activo (persiste a email_outbox, worker drainea async)');
     return transport;
 }
 

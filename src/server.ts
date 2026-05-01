@@ -1,7 +1,20 @@
+// Sentry init DEBE ir antes que cualquier otro require para capturar
+// startup errors. Si SENTRY_DSN no está seteado, esto es no-op.
+import { initSentry } from './infrastructure/monitoring/sentry';
+const sentryActive = initSentry();
+
 import app from './app';
 import config from './config';
 import logger from './utils/logger';
 import { rawPrisma } from './infrastructure/database/prisma';
+import { startOutboxWorker } from './infrastructure/email/outbox.service';
+
+if (sentryActive) {
+    logger.info('🔔 Sentry activo (errores reportados a sentry.io)');
+}
+
+// Worker de email outbox. Solo corre en una instancia (worker 0 de PM2).
+const outboxWorker = startOutboxWorker();
 
 const server = app.listen(config.port, () => {
     logger.info(`--------------------------------------------------`);
@@ -39,6 +52,10 @@ const shutdown = async (signal: string) => {
     server.close(async (err) => {
         if (err) {
             logger.error('[shutdown] error cerrando server HTTP', err);
+        }
+        if (outboxWorker) {
+            clearInterval(outboxWorker);
+            logger.info('[shutdown] outbox worker detenido');
         }
         try {
             await rawPrisma.$disconnect();

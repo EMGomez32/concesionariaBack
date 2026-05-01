@@ -1309,3 +1309,27 @@ model AccountToken {
   @@index([expiresAt])
   @@map("account_tokens")
 }
+
+/// Outbox de emails para SMTP con retries.
+/// El service.send() persiste el email acá dentro de la transacción del
+/// caller (ej: alta de usuario). Un worker async drainea los pendientes
+/// con backoff exponencial. Si SMTP cae, los emails no se pierden.
+model EmailOutbox {
+  id           Int       @id @default(autoincrement())
+  toAddress    String    @map("to_address")
+  subject      String
+  bodyText     String    @map("body_text") @db.Text
+  bodyHtml     String    @map("body_html") @db.Text
+  /// null = pendiente; fecha = enviado exitosamente
+  sentAt       DateTime? @map("sent_at")
+  attempts     Int       @default(0)
+  lastError    String?   @map("last_error") @db.Text
+  /// Próximo intento (con backoff). null si nunca fue intentado o ya se envió.
+  nextAttemptAt DateTime? @map("next_attempt_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  // Index parcial-style: los que están pending y ready se queryean por (sent_at, next_attempt_at)
+  @@index([sentAt, nextAttemptAt])
+  @@map("email_outbox")
+}

@@ -13,6 +13,7 @@ import swaggerUi from 'swagger-ui-express';
 import swaggerSpecs from './config/swagger';
 import prisma from './infrastructure/database/prisma';
 import { logger } from './infrastructure/logging/logger';
+import { metricsMiddleware, metricsEndpoint } from './infrastructure/metrics/metrics';
 
 const app = express();
 
@@ -139,8 +140,28 @@ if (env.NODE_ENV === 'development') {
 // Core Middleware: Multi-tenancy Context
 app.use(contextMiddleware);
 app.use(requestLogger);
+app.use(metricsMiddleware);
 
-// Health check (simplified using extended prisma)
+// ─── Health endpoints ──────────────────────────────────────────────────────
+// Separados en livez (process up) y readyz (DB up). El primero es barato y
+// solo verifica que el proceso responda — sirve para que orquestadores no
+// reinicien el container por DB lenta. El segundo verifica DB y se usa para
+// gating de tráfico (load balancer no envía requests si readyz falla).
+app.get('/livez', (_req, res) => {
+    res.json({ status: 'live', timestamp: new Date().toISOString() });
+});
+
+app.get('/readyz', async (_req, res) => {
+    try {
+        await (prisma as any).$queryRaw`SELECT 1`;
+        res.json({ status: 'ready', timestamp: new Date().toISOString() });
+    } catch (error) {
+        res.status(503).json({ status: 'not_ready', error: 'Database unavailable' });
+    }
+});
+
+// /health legacy: alias de /readyz para no romper healthchecks de Coolify
+// y del Dockerfile actual. Eventualmente migrar a /readyz explícito.
 app.get('/health', async (_req, res) => {
     try {
         await (prisma as any).$queryRaw`SELECT 1`;
@@ -149,6 +170,12 @@ app.get('/health', async (_req, res) => {
         res.status(503).json({ status: 'unhealthy', error: 'Database unavailable' });
     }
 });
+
+// ─── Prometheus /metrics ───────────────────────────────────────────────────
+// En producción conviene gatear por IP allowlist (Prometheus scraper) o
+// header secret. Por ahora abierto en local; si se monta el back público
+// gatearlo en el reverse proxy.
+app.get('/metrics', metricsEndpoint);
 
 // Archivos subidos (servidos como estáticos)
 const uploadsDir = process.env.UPLOADS_DIR || path.resolve(process.cwd(), 'uploads');

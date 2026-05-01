@@ -1,0 +1,89 @@
+# CI del backend — corre en cada push/PR a main.
+# Steps: install → typecheck → lint → build → test (unit/integration con DB).
+#
+# Tests de integración requieren Postgres; lo levantamos como service container.
+# La DB se pobla con `prisma db push` (es dev/test, no usamos migrate deploy).
+
+name: CI Backend
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
+
+jobs:
+    quality:
+        name: Lint + Typecheck + Build
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Setup Node 22
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '22'
+                  cache: 'npm'
+
+            - name: Install
+              run: npm ci --include=dev
+
+            - name: Generate Prisma client
+              run: npx prisma generate
+
+            - name: Typecheck
+              run: npm run typecheck
+
+            - name: Lint
+              run: npm run lint
+
+            - name: Build
+              run: npm run build
+
+    test:
+        name: Tests (con Postgres)
+        runs-on: ubuntu-latest
+        needs: quality
+
+        services:
+            postgres:
+                image: postgres:16-alpine
+                env:
+                    POSTGRES_USER: test
+                    POSTGRES_PASSWORD: test
+                    POSTGRES_DB: concesionaria_test
+                ports:
+                    - 5432:5432
+                options: >-
+                    --health-cmd pg_isready
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 5
+
+        env:
+            DATABASE_URL: postgresql://test:test@localhost:5432/concesionaria_test?sslmode=disable
+            JWT_SECRET: test_secret_at_least_32_chars_for_validation_xx
+            JWT_REFRESH_SECRET: test_refresh_secret_at_least_32_chars_xxxxxxxxx
+            NODE_ENV: test
+            LOG_LEVEL: error
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Setup Node 22
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '22'
+                  cache: 'npm'
+
+            - name: Install
+              run: npm ci --include=dev
+
+            - name: Apply schema + RLS
+              run: |
+                  npx prisma db push
+                  npm run init-rls
+
+            - name: Run tests
+              run: npm test

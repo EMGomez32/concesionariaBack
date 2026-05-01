@@ -37,6 +37,34 @@ export const getGastos = async (
     };
 };
 
+export const getGastoById = async (id: number): Promise<GastoVehiculo> => {
+    const gasto = await prisma.gastoVehiculo.findUnique({
+        where: { id },
+        include: { categoria: true, vehiculo: true, proveedor: true },
+    });
+    if (!gasto) throw new ApiError(404, 'Gasto no encontrado', 'NOT_FOUND');
+    return gasto as GastoVehiculo;
+};
+
+/**
+ * Total agregado con filtros opcionales. Migrado desde
+ * interface/controllers/GastoController.total (Sprint 4 cont).
+ */
+export const getGastoTotal = async (
+    filter: Record<string, unknown>,
+): Promise<{ total: number; count: number; filters: Record<string, unknown> }> => {
+    const r = await prisma.gastoVehiculo.aggregate({
+        _sum: { monto: true },
+        _count: true,
+        where: filter as Prisma.GastoVehiculoWhereInput,
+    });
+    return {
+        total: Number(r._sum.monto ?? 0),
+        count: r._count,
+        filters: filter,
+    };
+};
+
 export const createGasto = async (data: Prisma.GastoVehiculoUncheckedCreateInput): Promise<GastoVehiculo> => {
     return prisma.gastoVehiculo.create({ data });
 };

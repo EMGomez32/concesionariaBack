@@ -9,6 +9,12 @@ export const getFinancieras = async (concesionariaId: number): Promise<Financier
     });
 };
 
+export const getFinancieraById = async (id: number): Promise<Financiera> => {
+    const result = await prisma.financiera.findUnique({ where: { id } });
+    if (!result) throw new ApiError(404, 'Financiera no encontrada', 'NOT_FOUND');
+    return result;
+};
+
 export const createFinanciera = async (data: Prisma.FinancieraUncheckedCreateInput): Promise<Financiera> => {
     return prisma.financiera.create({ data });
 };

@@ -40,3 +40,21 @@ export const deleteGastoFijo = catchAsync(async (req: Request, res: Response) =>
     await gastoFijoService.deleteGastoFijo(parseInt(req.params.id as string, 10));
     res.send(ApiResponse.success(null, 'Gasto fijo eliminado correctamente'));
 });
+
+/**
+ * Total agregado de gastos fijos por año/mes/sucursal/categoría.
+ * Migrado desde interface/controllers/GastoFijoController.total (Sprint 4 cont).
+ */
+export const getGastosFijosTotal = catchAsync(async (req: Request, res: Response) => {
+    const { anio, mes, sucursalId, categoriaId } = req.query;
+    const user = req.user;
+    const result = await gastoFijoService.getTotal({
+        anio: anio ? Number(anio) : undefined,
+        mes: mes ? Number(mes) : undefined,
+        sucursalId: sucursalId ? Number(sucursalId) : undefined,
+        categoriaId: categoriaId ? Number(categoriaId) : undefined,
+        concesionariaId:
+            user && !user.roles.includes('super_admin') ? user.concesionariaId ?? undefined : undefined,
+    });
+    res.send(ApiResponse.success(result));
+});

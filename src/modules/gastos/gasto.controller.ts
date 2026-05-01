@@ -26,6 +26,27 @@ export const getGastos = catchAsync(async (req: Request, res: Response) => {
     }));
 });
 
+export const getGasto = catchAsync(async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id as string, 10);
+    const result = await gastoService.getGastoById(id);
+    res.send(ApiResponse.success(result));
+});
+
+/**
+ * Total agregado de gastos con filtros opcionales (vehiculoId, categoriaId,
+ * proveedorId). Migrado desde interface/controllers/GastoController.total.
+ */
+export const getGastoTotal = catchAsync(async (req: Request, res: Response) => {
+    let filter = pick(req.query, ['vehiculoId', 'categoriaId', 'proveedorId']);
+    filter = parseNumericFields(filter, ['vehiculoId', 'categoriaId', 'proveedorId']);
+    const user = req.user;
+    if (user && !user.roles.includes('super_admin')) {
+        (filter as Record<string, unknown>).concesionariaId = user.concesionariaId;
+    }
+    const result = await gastoService.getGastoTotal(filter);
+    res.send(ApiResponse.success(result));
+});
+
 export const createGasto = catchAsync(async (req: Request, res: Response) => {
     const user = req.user;
     const data = { ...req.body, concesionariaId: user?.concesionariaId };

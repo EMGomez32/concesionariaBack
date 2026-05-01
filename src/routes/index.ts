@@ -26,14 +26,17 @@ import ingresoRoutes from '../interface/routes/ingreso-vehiculo.routes';
 import reservaRoutes from '../modules/reservas/reserva.routes';
 import presupuestoRoutes from '../interface/routes/presupuesto.routes';
 import ventaRoutes from '../interface/routes/venta.routes';
-import gastoRoutes from '../interface/routes/gasto.routes';
+// gastos: migrado interface/ → modules/ (Sprint 4 cont) con /total.
+import gastoRoutes from '../modules/gastos/gasto.routes';
 import categoriaRoutes from '../interface/routes/categoria-gasto.routes';
-import gastoFijoRoutes from '../interface/routes/gasto-fijo.routes';
+// gastos-fijos: migrado interface/ → modules/ (Sprint 4 cont) con /total.
+import gastoFijoRoutes from '../modules/gastos-fijos/gasto-fijo.routes';
 import categoriaFijoRoutes from '../interface/routes/categoria-gasto-fijo.routes';
 // postventa-casos: migrado interface/ → modules/ (Sprint 4 cont) con /total.
 import casoRoutes from '../modules/postventa-casos/caso.routes';
 import itemRoutes from '../interface/routes/postventa-item.routes';
-import financieraRoutes from '../interface/routes/financiera.routes';
+// financieras: migrado interface/ → modules/ (Sprint 4 cont).
+import financieraRoutes from '../modules/financieras/financiera.routes';
 import financiacionRoutes from '../interface/routes/financiacion.routes';
 import solicitudRoutes from '../interface/routes/solicitud-financiacion.routes';
 import auditoriaRoutes from '../interface/routes/audit-log.routes';

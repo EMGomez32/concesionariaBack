@@ -9,6 +9,12 @@ export const getFinancieras = catchAsync(async (req: Request, res: Response) => 
     res.send(ApiResponse.success(result));
 });
 
+export const getFinanciera = catchAsync(async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id as string, 10);
+    const result = await financieraService.getFinancieraById(id);
+    res.send(ApiResponse.success(result));
+});
+
 export const createFinanciera = catchAsync(async (req: Request, res: Response) => {
     const data = { ...req.body, concesionariaId: req.user?.concesionariaId };
     const result = await financieraService.createFinanciera(data);

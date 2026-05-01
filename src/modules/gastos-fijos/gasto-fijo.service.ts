@@ -57,3 +57,35 @@ export const updateGastoFijo = async (id: number, data: Prisma.GastoFijoUpdateIn
 export const deleteGastoFijo = async (id: number) => {
     return prisma.gastoFijo.delete({ where: { id } });
 };
+
+/**
+ * Total agregado por año/mes/sucursal/categoría. Migrado desde
+ * interface/controllers/GastoFijoController.total (Sprint 4 cont).
+ */
+export const getTotal = async (filter: {
+    anio?: number;
+    mes?: number;
+    sucursalId?: number;
+    categoriaId?: number;
+    concesionariaId?: number;
+}) => {
+    if (!filter.anio) {
+        throw new ApiError(400, 'El parámetro `anio` es obligatorio', 'VALIDATION_ERROR');
+    }
+    const where: Prisma.GastoFijoWhereInput = { anio: filter.anio };
+    if (filter.mes != null) where.mes = filter.mes;
+    if (filter.sucursalId != null) where.sucursalId = filter.sucursalId;
+    if (filter.categoriaId != null) where.categoriaId = filter.categoriaId;
+    if (filter.concesionariaId != null) where.concesionariaId = filter.concesionariaId;
+
+    const r = await prisma.gastoFijo.aggregate({
+        _sum: { monto: true },
+        _count: true,
+        where,
+    });
+    return {
+        total: Number(r._sum.monto ?? 0),
+        count: r._count,
+        filters: filter,
+    };
+};

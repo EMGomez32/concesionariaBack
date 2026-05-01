@@ -9,7 +9,10 @@ import modeloRoutes from '../modules/modelos/modelo.routes';
 import versionRoutes from '../modules/versiones/version.routes';
 import usuarioRoutes from '../interface/routes/usuario.routes';
 import rolRoutes from '../interface/routes/rol.routes';
-import clienteRoutes from '../interface/routes/cliente.routes';
+// Migrado de interface/ → modules/ (Sprint 4 piloto). Tiene validación Zod
+// y los mismos endpoints. El interface/routes/cliente.routes.ts queda
+// huérfano pero no se borra todavía para no romper imports indirectos.
+import clienteRoutes from '../modules/clientes/cliente.routes';
 import proveedorRoutes from '../interface/routes/proveedor.routes';
 import vehiculoRoutes from '../interface/routes/vehiculo.routes';
 import archivoRoutes from '../interface/routes/vehiculo-archivo.routes';

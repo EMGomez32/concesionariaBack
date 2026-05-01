@@ -9,12 +9,30 @@ Plan de mejoras post-auditoría arquitectónica de abril 2026.
 | **Sprint 1 — "No nos rompan"** | ✅ Done | 7 vulnerabilidades críticas cerradas (debug routes, ventas sin auth, secrets hardcoded, swagger en prod, db push --accept-data-loss, hard-delete Concesionaria, JWT min 10) |
 | **Sprint 2 — Estabilidad** | ✅ Done | TOCTOU createVenta, refresh atómico, axios lock, graceful shutdown, logger JSON, mass assignment, email enumeration, ESLint backend, Prettier |
 | **Sprint 3 — Profesionalizar** | ✅ Done (parcial) | CI GitHub Actions, métricas Prometheus, Sentry SDK, /livez vs /readyz, outbox emails, soft-delete fantasma, FormField wrapper, ARCHITECTURE.md |
-| **Sprint 4 — Refactors estructurales** | ⏳ TODO | Items XL que requieren planning con stakeholder |
+| **Sprint 4 — Refactors estructurales** | 🟡 In progress | Foundations hechas: Zod + validateZod, OpenAPI codegen, withTenantTx, migración piloto clientes, refactor parcial PresupuestosPage |
 | **Sprint 5 — Compliance** | ⏳ TODO | Ley 25.326, AFIP WSFE, UIF |
 
 ---
 
 ## Sprint 4 — Refactors estructurales (XL)
+
+### Foundations entregadas (commit Sprint 4 inicial)
+
+✅ **`validateZod` middleware**: reemplazo type-safe de `express-validator`. Schemas viven en `*.schemas.ts` por módulo, errores estructurados con `path/message/code`, soporta `body | query | params`. Migrado: caja, clientes (piloto).
+
+✅ **OpenAPI codegen pipeline**:
+- Back: `npm run openapi:export` → `BackConcesionaria/openapi.json` (gitignored).
+- Front: `npm run openapi:gen` → `FrontConcesionaria/src/types/api.generated.ts` (5134 líneas). Eventualmente reemplaza los 13 archivos manuales de `src/types/`.
+- Workflow: cambiar el spec en el back via `@openapi` JSDoc → exportar → regenerar tipos en el front → CI puede validar drift.
+
+✅ **`withTenantTx` helper**: en `infrastructure/database/withTenantTx.ts`. Abre UNA transacción, setea GUCs (`app.tenant_id`, `app.is_super_admin`) una vez, pasa `tx` "crudo" al callback. Reemplaza el patrón de `prisma.$transaction(...)` que con la extensión de Prisma generaba tx anidadas. Adoptarlo gradualmente en services nuevos.
+
+✅ **Migración piloto clientes** `interface/` → `modules/`: el `routes/index.ts` ahora importa `modules/clientes/cliente.routes.ts` (con Zod + tenancy + authenticate) en lugar del legacy. Foundation para migrar el resto en sucesivos PRs (cliente por cliente, un dominio por sprint).
+
+✅ **Refactor parcial PresupuestosPage**: 1010 → 918 LOC. Extraídos `presupuestos.types.ts` y `presupuestos.utils.ts` (FORMA_PAGO_OPTIONS_CONV, fmt, currencyFmt, STATUS, blank rows). Los modales internos quedan para Sprint 5+.
+
+### Pendiente del Sprint 4 (incremental)
+
 
 ### A1. Unificar `modules/` vs `interface/` en backend
 

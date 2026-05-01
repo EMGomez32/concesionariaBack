@@ -2,12 +2,22 @@ class ApiError extends Error {
     public statusCode: number;
     public isOperational: boolean;
     public code: string;
+    /** Detalle estructurado opcional (ej: array de ZodIssue para 400). */
+    public details?: unknown;
 
-    constructor(statusCode: number, message: string, code: string | null = null, isOperational = true, stack = '') {
+    constructor(
+        statusCode: number,
+        message: string,
+        code: string | null = null,
+        isOperational = true,
+        stack = '',
+        details?: unknown,
+    ) {
         super(message);
         this.statusCode = statusCode;
         this.isOperational = isOperational;
         this.code = code || this._getDefaultCode(statusCode);
+        this.details = details;
         if (stack) {
             this.stack = stack;
         } else {

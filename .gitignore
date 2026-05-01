@@ -26,3 +26,6 @@ prisma/dev.db*
 prisma/setup-*.ts
 prisma/import-*.ts
 prisma/restore-*.ts
+
+# OpenAPI export (generado por `npm run openapi:export`)
+openapi.json

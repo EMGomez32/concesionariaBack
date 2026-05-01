@@ -3,6 +3,7 @@ import authRoutes from '../interface/routes/auth.routes';
 import accountRoutes from '../modules/account/account.routes';
 import cajaRoutes from '../modules/caja/caja.routes';
 import concesionariaRoutes from '../interface/routes/concesionaria.routes';
+// sucursales: ya estaba en modules/ (no hubo migración para ésta — venía bien).
 import sucursalRoutes from '../modules/sucursales/sucursal.routes';
 import marcaRoutes from '../modules/marcas/marca.routes';
 import modeloRoutes from '../modules/modelos/modelo.routes';
@@ -13,12 +14,14 @@ import rolRoutes from '../interface/routes/rol.routes';
 // y los mismos endpoints. El interface/routes/cliente.routes.ts queda
 // huérfano pero no se borra todavía para no romper imports indirectos.
 import clienteRoutes from '../modules/clientes/cliente.routes';
-import proveedorRoutes from '../interface/routes/proveedor.routes';
+// proveedores: migrado de interface/ → modules/ (Sprint 4).
+import proveedorRoutes from '../modules/proveedores/proveedor.routes';
 import vehiculoRoutes from '../interface/routes/vehiculo.routes';
 import archivoRoutes from '../interface/routes/vehiculo-archivo.routes';
 import movimientoRoutes from '../interface/routes/vehiculo-movimiento.routes';
 import ingresoRoutes from '../interface/routes/ingreso-vehiculo.routes';
-import reservaRoutes from '../interface/routes/reserva.routes';
+// reservas: migrado de interface/ → modules/ (Sprint 4).
+import reservaRoutes from '../modules/reservas/reserva.routes';
 import presupuestoRoutes from '../interface/routes/presupuesto.routes';
 import ventaRoutes from '../interface/routes/venta.routes';
 import gastoRoutes from '../interface/routes/gasto.routes';

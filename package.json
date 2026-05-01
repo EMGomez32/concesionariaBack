@@ -13,13 +13,24 @@
     "format": "prettier --write \"src/**/*.{ts,js,json}\"",
     "format:check": "prettier --check \"src/**/*.{ts,js,json}\"",
     "openapi:export": "ts-node scripts/export-openapi.ts",
+    "prepare": "husky || true",
     "seed": "ts-node prisma/seed.ts",
     "init-rls": "node prisma/init-rls.js",
     "bootstrap": "node prisma/bootstrap.js",
+    "smoke-test": "ts-node scripts/smoke-test.ts",
     "test": "jest --runInBand"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
+  },
+  "lint-staged": {
+    "*.{ts,js}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
   },
   "keywords": [],
   "author": "",
@@ -43,8 +54,10 @@
     "axios": "^1.15.2",
     "eslint": "^10.2.1",
     "globals": "^17.5.0",
+    "husky": "^9.1.7",
     "jest": "^30.2.0",
     "jest-mock-extended": "^4.0.0",
+    "lint-staged": "^16.4.0",
     "prettier": "^3.8.3",
     "prisma": "^7.4.1",
     "supertest": "^7.2.2",

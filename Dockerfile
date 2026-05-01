@@ -64,16 +64,16 @@ ENTRYPOINT ["/sbin/tini", "--"]
 
 # Arranque: sincroniza schema + RLS + bootstrap + cluster.
 #
-# `prisma db push` (SIN --accept-data-loss) sincroniza el schema con la DB.
-# Si hay un cambio destructivo (drop column con datos), prisma aborta el
-# arranque y el container falla — esto es DESEABLE en producción para
-# forzar al equipo a generar una migración explícita.
+# `prisma/db-bootstrap.js` decide automáticamente entre `db push` (legacy)
+# y `migrate deploy` (modo migrations) según el estado del repo y de la DB.
+# Esto permite migrar progresivamente sin downtime ni intervención manual.
 #
-# Para deploys con múltiples instancias (cluster, blue/green), se recomienda:
-#   1. Ejecutar `prisma migrate deploy` en un step de CI/CD (no en cada
-#      arranque del container) y dejar acá solo `start:cluster`.
-#   2. Override de este CMD vía Coolify "Custom Start Command" o
-#      `command:` del compose.
+# Para forzar migrations:
+#   1. Generar migration en local: `npx prisma migrate dev --name <desc>`
+#   2. Commitear `prisma/migrations/<timestamp>_<desc>/`
+#   3. El próximo deploy detecta las migrations y hace BASELINE automático
+#      (marca como applied + sigue con db push de seguridad). Después
+#      pasa a usar migrate deploy.
 #
 # init-rls + bootstrap son idempotentes y seguros de re-correr.
-CMD ["sh", "-c", "npx prisma db push && npm run init-rls && npm run bootstrap && npm run start:cluster"]
+CMD ["sh", "-c", "node prisma/db-bootstrap.js && npm run init-rls && npm run bootstrap && npm run start:cluster"]
